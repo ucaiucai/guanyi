@@ -3,5 +3,5 @@ __pycache__/
 *.pyc
 .venv/
 venv/
-run_log_*.json
+logs/
 *.log

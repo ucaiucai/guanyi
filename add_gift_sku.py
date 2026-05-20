@@ -29,6 +29,7 @@ from sku_parser import filter_new_gift_skus, parse_gift_skus
 logger = logging.getLogger(__name__)
 
 DEFAULT_CONFIG_PATH = Path(__file__).parent / "config.json"
+LOGS_DIR = Path(__file__).parent / "logs"
 
 
 @dataclass
@@ -314,7 +315,8 @@ def print_summary(run: RunSummary, *, dry_run: bool) -> None:
 
 def save_run_log(run: RunSummary, *, dry_run: bool) -> Path:
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    path = Path(__file__).parent / f"run_log_{ts}.json"
+    LOGS_DIR.mkdir(parents=True, exist_ok=True)
+    path = LOGS_DIR / f"run_log_{ts}.json"
     payload = {
         "dry_run": dry_run,
         "summary": {

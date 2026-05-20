@@ -74,7 +74,7 @@ python add_gift_sku.py --order-id 6952978354922788022
 python add_gift_sku.py -v
 ```
 
-执行结束后会生成 `run_log_YYYYMMDD_HHMMSS.json`，记录本批处理明细。
+执行结束后会在 `logs/` 目录生成 `run_log_YYYYMMDD_HHMMSS.json`，记录本批处理明细。
 
 ## SKU 解析规则
 
