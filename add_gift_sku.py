@@ -23,6 +23,7 @@ from typing import Any
 
 from feishu_bitable import sync_to_feishu_bitable
 from guanyi_client import GuanyiApiError, GuanyiClient
+from order_time import order_is_old_enough, parse_order_datetime
 from sku_parser import filter_new_skus, parse_skus
 
 logger = logging.getLogger(__name__)
@@ -67,6 +68,7 @@ class RunSummary:
     skipped_no_sku: int = 0
     failed: int = 0
     approved: int = 0
+    skipped_too_recent: int = 0
     order_results: list[OrderResult] = field(default_factory=list)
 
 
@@ -195,21 +197,20 @@ def process_order(
 
     if not skus:
         result.actions.append(
-            SkuAction("", "skipped_no_sku", "备注未解析到含横杠的 SKU")
+            SkuAction("", "skipped_no_sku", "备注未解析到 SKU")
         )
         return result
 
-    detail_resp = client.get_order_details(order_id)
-    detail_rows = detail_resp.get("rows") or []
-    existing_codes = [
-        str(d["itemCode"]) for d in detail_rows if d.get("itemCode")
-    ]
-    to_add = filter_new_skus(skus, existing_codes)
+    log_rows = int(cfg.get("log_query_rows", 50))
+    log_added_skus = client.fetch_log_added_skus(order_id, rows_per_page=log_rows)
+    to_add = filter_new_skus(skus, log_added_skus)
+    if log_added_skus:
+        logger.debug("订单 %s 日志已加赠: %s", platform_code or order_id, log_added_skus)
 
     for sku in skus:
         if sku not in to_add:
             result.actions.append(
-                SkuAction(sku, "skipped_already_exists", "订单明细已存在")
+                SkuAction(sku, "skipped_already_exists", "操作日志已有新增商品记录")
             )
             continue
 
@@ -229,7 +230,7 @@ def process_order(
 
             client.get_trade_detail(order_id)
             client.update_order_detail(order_id, product)
-            existing_codes.append(sku)
+            log_added_skus.append(sku)
             to_add = [s for s in to_add if s != sku]
             result.actions.append(
                 SkuAction(
@@ -285,6 +286,7 @@ def print_summary(run: RunSummary, *, dry_run: bool) -> None:
     print(f"  已存在跳过: {run.skipped_exists}")
     print(f"  无 SKU 跳过: {run.skipped_no_sku}")
     print(f"  提交审核: {run.approved}")
+    print(f"  半小时内跳过: {run.skipped_too_recent}")
     print(f"  失败/未找到: {run.failed}")
     print("\n明细:")
     for order in run.order_results:
@@ -311,6 +313,7 @@ def save_run_log(run: RunSummary, *, dry_run: bool) -> Path:
             "skipped_no_sku": run.skipped_no_sku,
             "failed": run.failed,
             "approved": run.approved,
+            "skipped_too_recent": run.skipped_too_recent,
         },
         "orders": [
             {
@@ -338,8 +341,24 @@ def run(cfg: dict[str, Any], *, dry_run: bool, order_id: str | None) -> RunSumma
     max_pages = cfg.get("max_pages")
     list_filters = cfg.get("list_filters") or {}
 
+    min_age_minutes = int(cfg.get("min_order_age_minutes", 30))
+
     def handle_row(row: dict[str, Any]) -> None:
         run_summary.orders_scanned += 1
+
+        if min_age_minutes > 0 and not order_id:
+            if not order_is_old_enough(row, min_age_minutes):
+                run_summary.skipped_too_recent += 1
+                label = row.get("platformCode") or row.get("id")
+                order_dt = parse_order_datetime(row)
+                logger.debug(
+                    "跳过 %s 分钟内订单 %s (createDate=%s)",
+                    min_age_minutes,
+                    label,
+                    order_dt,
+                )
+                return
+
         memo = str(row.get("sellerMemo") or "")
         skus = parse_skus(
             memo,
@@ -383,6 +402,7 @@ def run(cfg: dict[str, Any], *, dry_run: bool, order_id: str | None) -> RunSumma
                 "请确认 shop_ids、列表筛选及订单是否在待审核页"
             )
     else:
+        n = 0
         for row in client.iter_approve_orders(
             shop_ids=shop_ids,
             page_size=page_size,
@@ -390,6 +410,9 @@ def run(cfg: dict[str, Any], *, dry_run: bool, order_id: str | None) -> RunSumma
             list_filters=list_filters,
         ):
             handle_row(row)
+            n += 1
+            if n >= 25:
+                break
 
     summarize(run_summary)
     return run_summary

@@ -8,6 +8,21 @@ import re
 from typing import Iterable, Sequence
 
 SKU_PATTERN = re.compile(r"[A-Za-z0-9-]+")
+_HAS_LETTER = re.compile(r"[A-Za-z]")
+_HAS_DIGIT = re.compile(r"[0-9]")
+
+
+def _is_valid_sku_token(token: str, *, min_length: int) -> bool:
+    """
+    有效 SKU 片段：
+    - 含 '-'（如 AFL-0011、YHG-ZP-001），或
+    - 无 '-' 但同时含字母与数字（如 2406NCZ、WT26004）
+    """
+    if len(token) < min_length:
+        return False
+    if "-" in token:
+        return True
+    return bool(_HAS_LETTER.search(token) and _HAS_DIGIT.search(token))
 
 
 def parse_skus(
@@ -17,7 +32,7 @@ def parse_skus(
     allowlist_prefix: Sequence[str] | None = None,
 ) -> list[str]:
     """
-    提取备注中的 SKU：字母/数字/横杠连续片段，且必须含 '-'。
+    提取备注中的 SKU：字母/数字/横杠组成的连续片段。
 
     :param memo: sellerMemo 文本
     :param min_length: 最短有效长度（去首尾横杠后）
@@ -32,9 +47,7 @@ def parse_skus(
 
     for raw in SKU_PATTERN.findall(memo):
         token = raw.strip("-")
-        if not token or "-" not in token:
-            continue
-        if len(token) < min_length:
+        if not token or not _is_valid_sku_token(token, min_length=min_length):
             continue
         if prefixes and not any(token.startswith(p) for p in prefixes):
             continue

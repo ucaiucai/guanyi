@@ -25,6 +25,7 @@ cp config.example.json config.json
 | `page_size` | 列表每页条数，默认 50 |
 | `max_pages` | 最多拉取页数，`null` 表示拉完全部 |
 | `request_delay_sec` | 请求间隔，降低风控 |
+| `min_order_age_minutes` | 只处理创建时间早于「当前 − N 分钟」的订单，默认 `30`（半小时内不处理）；`0` 表示不限制。`--order-id` 指定单笔时不受此限制 |
 | `sku_min_length` | SKU 最短长度，默认 2 |
 | `sku_allowlist_prefix` | 非空数组时仅处理以这些前缀开头的 SKU |
 | `list_filters` | 与列表页筛选项一致 |
@@ -78,16 +79,17 @@ python add_gift_sku.py -v
 ## SKU 解析规则
 
 - 匹配备注中由 **字母、数字、`-`** 组成的连续片段
-- **必须至少包含一个 `-`**（`2406NCZ`、`66ml` 等不会提取）
-- 去首尾 `-` 后长度 ≥ `sku_min_length`
-- 与订单已有 `itemCode` 相同则跳过
+- 满足其一即可：**含 `-`**（如 `AFL-0011`），或 **同时含字母与数字**（如 `2406NCZ`、`WT26004`）
+- 去首尾 `-` 后长度 ≥ `sku_min_length`；纯字母或纯数字片段不提取
+- 是否已加赠：查询操作日志，`action=修改` 且 `memo` 含「新增商品」「商品代码XXX」则视为已加赠并跳过
 
 示例：
 
 | sellerMemo | 解析结果 |
 |------------|----------|
-| `加赠 油 AFL-0011 66ml` | `AFL-0011` |
+| `加赠 油 AFL-0011 66ml` | `AFL-0011`（`66ml` 含字母数字可能仍会匹配，商品库无则跳过） |
 | `YHG-ZP-001 烟灰缸-赠品缸` | `YHG-ZP-001` |
+| `加赠 2406NCZ` | `2406NCZ` |
 
 ## 验证步骤
 

@@ -5,6 +5,8 @@
   "page_size": 50,
   "max_pages": null,
   "request_delay_sec": 0.4,
+  "min_order_age_minutes": 30,
+  "log_query_rows": 50,
   "sku_min_length": 2,
   "sku_allowlist_prefix": [],
   "stop_on_auth_error": true,

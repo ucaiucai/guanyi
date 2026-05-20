@@ -153,6 +153,38 @@ class GuanyiClient:
             referer_path="/tc/trade/trade_order_approve",
         )
 
+    def query_order_log(
+        self,
+        tid: str,
+        *,
+        page: int = 1,
+        rows: int = 50,
+    ) -> dict[str, Any]:
+        """查询订单操作日志（tid 为管易内部订单 id）。"""
+        return self._post(
+            "/tc/log/log_query/data/log",
+            {"page": page, "rows": rows, "tid": str(tid)},
+            referer_path="/tc/trade/trade_order_approve",
+        )
+
+    def fetch_log_added_skus(self, order_id: str, *, rows_per_page: int = 50) -> list[str]:
+        """分页拉取操作日志并解析已加赠商品编码。"""
+        from order_log import parse_gift_skus_from_log
+
+        all_rows: list[dict[str, Any]] = []
+        page = 1
+
+        while True:
+            result = self.query_order_log(order_id, page=page, rows=rows_per_page)
+            batch = result.get("rows") or []
+            all_rows.extend(batch)
+            total = int(result.get("total") or 0)
+            if len(all_rows) >= total or not batch:
+                break
+            page += 1
+
+        return parse_gift_skus_from_log(all_rows)
+
     def search_product(
         self,
         like_code: str,
