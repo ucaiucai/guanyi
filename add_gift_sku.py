@@ -24,7 +24,7 @@ from typing import Any
 from feishu_bitable import sync_to_feishu_bitable
 from guanyi_client import GuanyiApiError, GuanyiClient
 from order_time import order_is_old_enough, parse_order_datetime
-from sku_parser import filter_new_skus, parse_skus
+from sku_parser import filter_new_gift_skus, parse_gift_skus
 
 logger = logging.getLogger(__name__)
 
@@ -182,11 +182,14 @@ def process_order(
     if allowlist == []:
         allowlist = None
 
-    skus = parse_skus(
+    max_qty = int(cfg.get("gift_max_qty", 99))
+    gift_skus = parse_gift_skus(
         seller_memo,
         min_length=int(cfg.get("sku_min_length", 2)),
         allowlist_prefix=allowlist,
+        max_qty=max_qty,
     )
+    sku_codes = [g.code for g in gift_skus]
 
     result = OrderResult(
         order_id=order_id,
@@ -195,7 +198,7 @@ def process_order(
         seller_memo=seller_memo,
     )
 
-    if not skus:
+    if not gift_skus:
         result.actions.append(
             SkuAction("", "skipped_no_sku", "备注未解析到 SKU")
         )
@@ -203,20 +206,28 @@ def process_order(
 
     log_rows = int(cfg.get("log_query_rows", 50))
     log_added_skus = client.fetch_log_added_skus(order_id, rows_per_page=log_rows)
-    to_add = filter_new_skus(skus, log_added_skus)
+    to_add = filter_new_gift_skus(gift_skus, log_added_skus)
+    to_add_codes = {g.code.upper() for g in to_add}
     if log_added_skus:
         logger.debug("订单 %s 日志已加赠: %s", platform_code or order_id, log_added_skus)
 
-    for sku in skus:
-        if sku not in to_add:
+    for gift in gift_skus:
+        sku = gift.code
+        if sku.upper() not in to_add_codes:
             result.actions.append(
                 SkuAction(sku, "skipped_already_exists", "操作日志已有新增商品记录")
             )
             continue
 
+        qty_label = f"×{gift.qty}" if gift.qty > 1 else ""
+
         if dry_run:
             result.actions.append(
-                SkuAction(sku, "dry_run_would_add", f"将加赠 warehouse={warehouse_id}")
+                SkuAction(
+                    sku,
+                    "dry_run_would_add",
+                    f"将加赠 {gift.qty} 件 warehouse={warehouse_id}",
+                )
             )
             continue
 
@@ -229,18 +240,19 @@ def process_order(
                 continue
 
             client.get_trade_detail(order_id)
-            client.update_order_detail(order_id, product)
+            client.update_order_detail(order_id, product, qty=gift.qty)
             log_added_skus.append(sku)
-            to_add = [s for s in to_add if s != sku]
+            to_add_codes.discard(sku.upper())
             result.actions.append(
                 SkuAction(
                     sku,
                     "added",
-                    f"{product.get('itemName', '')} (itemCode={product.get('itemCode')})",
+                    f"{qty_label} {product.get('itemName', '')} "
+                    f"(itemCode={product.get('itemCode')}, qty={gift.qty})",
                 )
             )
             label = platform_code or code or order_id
-            logger.info("订单 %s 已加赠 %s", label, sku)
+            logger.info("订单 %s 已加赠 %s %s", label, sku, qty_label or "×1")
         except GuanyiApiError as exc:
             status = "ambiguous_product" if "歧义" in str(exc) else "failed"
             result.actions.append(SkuAction(sku, status, str(exc)))
@@ -251,7 +263,7 @@ def process_order(
         client,
         result,
         order_id,
-        skus,
+        sku_codes,
         cfg,
         dry_run=dry_run,
         platform_code=platform_code,
@@ -360,25 +372,26 @@ def run(cfg: dict[str, Any], *, dry_run: bool, order_id: str | None) -> RunSumma
                 return
 
         memo = str(row.get("sellerMemo") or "")
-        skus = parse_skus(
+        gift_skus = parse_gift_skus(
             memo,
             min_length=int(cfg.get("sku_min_length", 2)),
             allowlist_prefix=cfg.get("sku_allowlist_prefix") or None,
+            max_qty=int(cfg.get("gift_max_qty", 99)),
         )
-        if not skus and not order_id:
+        if not gift_skus and not order_id:
             return
 
         if order_id and not order_ref_matches(row, order_id):
             return
 
-        if skus:
+        if gift_skus:
             run_summary.orders_with_skus += 1
 
-        if not skus and order_id:
+        if not gift_skus and order_id:
             logger.warning("指定订单 %s 备注未解析到 SKU: %s", order_id, memo)
             return
 
-        if not skus:
+        if not gift_skus:
             return
 
         order_result = process_order(client, row, cfg, dry_run=dry_run)
@@ -410,9 +423,6 @@ def run(cfg: dict[str, Any], *, dry_run: bool, order_id: str | None) -> RunSumma
             list_filters=list_filters,
         ):
             handle_row(row)
-            n += 1
-            if n >= 25:
-                break
 
     summarize(run_summary)
     return run_summary

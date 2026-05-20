@@ -221,7 +221,13 @@ class GuanyiClient:
             referer_path="/tc/trade/trade_order_approve",
         )
 
-    def update_order_detail(self, order_id: str, product: dict[str, Any]) -> dict[str, Any]:
+    def update_order_detail(
+        self,
+        order_id: str,
+        product: dict[str, Any],
+        *,
+        qty: int = 1,
+    ) -> dict[str, Any]:
         detail_line = {
             "skuId": str(product["id"]),
             "itemSkuId": product.get("itemSkuId"),
@@ -229,7 +235,7 @@ class GuanyiClient:
             "itemSkuCode": product.get("itemSkuCode"),
             "itemSkuName": product.get("itemSkuName"),
             "discount": 1,
-            "qty": 1,
+            "qty": max(1, int(qty)),
             "originPrice": 0,
             "price": 0,
             "originAmount": 0,
