@@ -30,6 +30,23 @@ cp config.example.json config.json
 | `list_filters` | 与列表页筛选项一致 |
 | `auto_approve` | 加赠流程结束后是否调用审核接口，默认 `true` |
 | `approve_when_ready` | 未新增行但备注 SKU 均已存在时是否仍审核，默认 `true` |
+| `feishu` | 执行完成后写入飞书多维表「订单记录表」，见下表 |
+
+### 飞书多维表 (`feishu`)
+
+默认同步到：[订单记录表](https://doubleline.feishu.cn/wiki/TosvwRZ7lifUu9kIuKgcjuNqnTw)
+
+| 字段 | 写入内容 |
+|------|----------|
+| 订单号 | `platformCode` |
+| 备注 | `sellerMemo` |
+| 加赠商品编码 | SKU |
+| 加赠商品名称 | 商品名称 |
+| 加赠商品规格 | 处理说明 / 错误信息 |
+| 审核状态 | 已通过 / 待审核 / 已拒绝 |
+| 审核时间 | 状态为「已通过」时写入当前时间 |
+
+依赖本机已配置 `lark-cli` 且能 `--as user` 访问该 Base。`--no-feishu` 可跳过同步。
 
 Cookie 过期时接口会报错，需重新登录管易并更新 `cookie`（关注 `shiroCookie`）。
 
@@ -44,6 +61,9 @@ python add_gift_sku.py --dry-run
 
 # 只加赠，不审核
 python add_gift_sku.py --no-approve
+
+# 不同步飞书
+python add_gift_sku.py --no-feishu
 
 # 仅处理一笔订单（联调推荐，参数为平台订单号 platformCode）
 python add_gift_sku.py --order-id 6952978354922788022 --dry-run

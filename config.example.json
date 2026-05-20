@@ -11,6 +11,14 @@
   "auto_approve": true,
   "approve_when_ready": true,
   "dry_run": false,
+  "feishu": {
+    "enabled": true,
+    "base_token": "FCAjbZmc2a31DSspNfccp3gWnVg",
+    "table_id": "tblhIMTiGuxeF52t",
+    "wiki_url": "https://doubleline.feishu.cn/wiki/TosvwRZ7lifUu9kIuKgcjuNqnTw",
+    "sync_on_dry_run": false,
+    "batch_size": 200
+  },
   "list_filters": {
     "cod": "",
     "chkMemo": "",

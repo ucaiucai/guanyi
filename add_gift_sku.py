@@ -21,6 +21,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from feishu_bitable import sync_to_feishu_bitable
 from guanyi_client import GuanyiApiError, GuanyiClient
 from sku_parser import filter_new_skus, parse_skus
 
@@ -419,6 +420,11 @@ def main() -> int:
         help="加赠后不自动提交审核",
     )
     parser.add_argument(
+        "--no-feishu",
+        action="store_true",
+        help="不同步结果到飞书多维表",
+    )
+    parser.add_argument(
         "-v",
         "--verbose",
         action="store_true",
@@ -440,6 +446,11 @@ def main() -> int:
     dry_run = args.dry_run or bool(cfg.get("dry_run", False))
     if args.no_approve:
         cfg = {**cfg, "auto_approve": False}
+    if args.no_feishu:
+        cfg = {
+            **cfg,
+            "feishu": {**(cfg.get("feishu") or {}), "enabled": False},
+        }
 
     try:
         summary = run(cfg, dry_run=dry_run, order_id=args.order_id)
@@ -450,6 +461,23 @@ def main() -> int:
     print_summary(summary, dry_run=dry_run)
     log_path = save_run_log(summary, dry_run=dry_run)
     print(f"\n运行日志已写入: {log_path}")
+
+    feishu_cfg = cfg.get("feishu") or {}
+    try:
+        n = sync_to_feishu_bitable(
+            summary.order_results,
+            feishu_cfg,
+            dry_run=dry_run,
+        )
+        if n:
+            wiki = feishu_cfg.get(
+                "wiki_url",
+                "https://doubleline.feishu.cn/wiki/TosvwRZ7lifUu9kIuKgcjuNqnTw",
+            )
+            print(f"飞书多维表已同步 {n} 条: {wiki}")
+    except Exception as exc:
+        logger.error("飞书同步失败: %s", exc)
+        return 1
 
     return 1 if summary.failed > 0 else 0
 
