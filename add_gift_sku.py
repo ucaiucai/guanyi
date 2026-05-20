@@ -65,7 +65,64 @@ class RunSummary:
     skipped_exists: int = 0
     skipped_no_sku: int = 0
     failed: int = 0
+    approved: int = 0
     order_results: list[OrderResult] = field(default_factory=list)
+
+
+def _sku_actions_for_skus(result: OrderResult, skus: list[str]) -> list[SkuAction]:
+    sku_set = set(skus)
+    return [a for a in result.actions if a.sku in sku_set]
+
+
+def should_approve_order(result: OrderResult, skus: list[str], cfg: dict[str, Any]) -> bool:
+    """加赠流程结束后是否提交审核。"""
+    if not cfg.get("auto_approve", True):
+        return False
+    sku_actions = _sku_actions_for_skus(result, skus)
+    if not sku_actions:
+        return False
+    bad = {"failed", "product_not_found", "ambiguous_product"}
+    if any(a.status in bad for a in sku_actions):
+        return False
+    if any(a.status == "added" for a in sku_actions):
+        return True
+    if cfg.get("approve_when_ready", True):
+        ok = {"added", "skipped_already_exists"}
+        return all(a.status in ok for a in sku_actions)
+    return False
+
+
+def try_approve_order(
+    client: GuanyiClient,
+    result: OrderResult,
+    order_id: str,
+    skus: list[str],
+    cfg: dict[str, Any],
+    *,
+    dry_run: bool,
+    platform_code: str,
+    code: str,
+) -> None:
+    if not should_approve_order(result, skus, cfg):
+        return
+
+    label = platform_code or code or order_id
+    if dry_run:
+        result.actions.append(
+            SkuAction("", "dry_run_would_approve", "加赠完成后将提交审核")
+        )
+        return
+
+    try:
+        body = client.approve_order(order_id)
+        msg = ""
+        if isinstance(body, dict):
+            msg = str(body.get("message") or body.get("msg") or "审核已提交")
+        result.actions.append(SkuAction("", "approved", msg))
+        logger.info("订单 %s 已提交审核", label)
+    except GuanyiApiError as exc:
+        result.actions.append(SkuAction("", "approve_failed", str(exc)))
+        logger.error("订单 %s 审核失败: %s", label, exc)
 
 
 def load_config(path: Path) -> dict[str, Any]:
@@ -188,6 +245,16 @@ def process_order(
             label = platform_code or code or order_id
             logger.error("订单 %s SKU %s 失败: %s", label, sku, exc)
 
+    try_approve_order(
+        client,
+        result,
+        order_id,
+        skus,
+        cfg,
+        dry_run=dry_run,
+        platform_code=platform_code,
+        code=code,
+    )
     return result
 
 
@@ -202,6 +269,10 @@ def summarize(run: RunSummary) -> None:
                 run.skipped_no_sku += 1
             elif action.status in ("failed", "product_not_found", "ambiguous_product"):
                 run.failed += 1
+            elif action.status in ("approved", "dry_run_would_approve"):
+                run.approved += 1
+            elif action.status == "approve_failed":
+                run.failed += 1
 
 
 def print_summary(run: RunSummary, *, dry_run: bool) -> None:
@@ -212,6 +283,7 @@ def print_summary(run: RunSummary, *, dry_run: bool) -> None:
     print(f"  加赠成功: {run.added}")
     print(f"  已存在跳过: {run.skipped_exists}")
     print(f"  无 SKU 跳过: {run.skipped_no_sku}")
+    print(f"  提交审核: {run.approved}")
     print(f"  失败/未找到: {run.failed}")
     print("\n明细:")
     for order in run.order_results:
@@ -237,6 +309,7 @@ def save_run_log(run: RunSummary, *, dry_run: bool) -> Path:
             "skipped_exists": run.skipped_exists,
             "skipped_no_sku": run.skipped_no_sku,
             "failed": run.failed,
+            "approved": run.approved,
         },
         "orders": [
             {
@@ -341,6 +414,11 @@ def main() -> int:
         help="仅处理指定订单：平台订单号 platformCode（也兼容管易内部 id）",
     )
     parser.add_argument(
+        "--no-approve",
+        action="store_true",
+        help="加赠后不自动提交审核",
+    )
+    parser.add_argument(
         "-v",
         "--verbose",
         action="store_true",
@@ -360,6 +438,8 @@ def main() -> int:
         return 1
 
     dry_run = args.dry_run or bool(cfg.get("dry_run", False))
+    if args.no_approve:
+        cfg = {**cfg, "auto_approve": False}
 
     try:
         summary = run(cfg, dry_run=dry_run, order_id=args.order_id)

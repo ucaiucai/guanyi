@@ -254,6 +254,22 @@ class GuanyiClient:
             )
         return body
 
-    def approve_order(self, order_id: str) -> None:
-        """预留：订单审核接口（待补充 curl 后实现）。"""
-        raise NotImplementedError("订单审核接口尚未配置，请后续补充")
+    def approve_order(self, order_id: str) -> dict[str, Any]:
+        """提交订单审核（ids 为管易内部订单 id）。"""
+        body = self._post(
+            "/tc/trade/trade_order_approve/approve",
+            {"ids": str(order_id)},
+            referer_path="/tc/trade/trade_order_approve",
+        )
+        if isinstance(body, dict):
+            status = str(body.get("status", ""))
+            message = str(body.get("message") or body.get("msg") or "")
+            if status and status not in ("200", "0"):
+                raise GuanyiApiError(
+                    f"审核失败: {message or body}",
+                    status=status,
+                    payload=body,
+                )
+            if message and "成功" not in message and status not in ("200", "0", ""):
+                raise GuanyiApiError(f"审核失败: {message}", payload=body)
+        return body if isinstance(body, dict) else {"raw": body}
