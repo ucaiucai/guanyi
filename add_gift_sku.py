@@ -57,7 +57,18 @@ class OrderResult:
     platform_code: str = ""
     code: str = ""
     seller_memo: str = ""
+    parsed_gifts: list[dict[str, Any]] = field(default_factory=list)
     actions: list[SkuAction] = field(default_factory=list)
+
+
+def _format_parsed_gifts(gifts: list[Any]) -> str:
+    """如 AFL-0011×1, YHG-ZP-001×2"""
+    parts = []
+    for g in gifts:
+        code = g.code if hasattr(g, "code") else g["code"]
+        qty = g.qty if hasattr(g, "qty") else g.get("qty", 1)
+        parts.append(f"{code}×{qty}" if qty > 1 else code)
+    return ", ".join(parts)
 
 
 @dataclass
@@ -197,6 +208,7 @@ def process_order(
         platform_code=platform_code,
         code=code,
         seller_memo=seller_memo,
+        parsed_gifts=[{"code": g.code, "qty": g.qty} for g in gift_skus],
     )
 
     if not gift_skus:
@@ -209,8 +221,15 @@ def process_order(
     log_added_skus = client.fetch_log_added_skus(order_id, rows_per_page=log_rows)
     to_add = filter_new_gift_skus(gift_skus, log_added_skus)
     to_add_codes = {g.code.upper() for g in to_add}
+    label = platform_code or code or order_id
+    logger.info(
+        "订单 %s 解析 %d 个加赠 SKU: %s",
+        label,
+        len(gift_skus),
+        _format_parsed_gifts(gift_skus),
+    )
     if log_added_skus:
-        logger.debug("订单 %s 日志已加赠: %s", platform_code or order_id, log_added_skus)
+        logger.debug("订单 %s 日志已加赠: %s", label, log_added_skus)
 
     for gift in gift_skus:
         sku = gift.code
@@ -307,7 +326,8 @@ def print_summary(run: RunSummary, *, dry_run: bool) -> None:
             continue
         memo_preview = order.seller_memo[:80] + ("…" if len(order.seller_memo) > 80 else "")
         order_label = order.platform_code or order.code or order.order_id
-        print(f"  订单 {order_label} | 备注: {memo_preview}")
+        gifts_line = _format_parsed_gifts(order.parsed_gifts)
+        print(f"  订单 {order_label} | 加赠 SKU: {gifts_line} | 备注: {memo_preview}")
         for a in order.actions:
             if a.status != "skipped_no_sku":
                 print(f"    {a.sku or '-'}: {a.status} — {a.message}")
