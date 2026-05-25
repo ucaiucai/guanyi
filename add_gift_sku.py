@@ -22,7 +22,8 @@ from pathlib import Path
 from typing import Any
 
 from feishu_bitable import sync_to_feishu_bitable
-from guanyi_client import GuanyiApiError, GuanyiClient
+from guanyi_auth import create_client_from_config
+from guanyi_client import GuanyiApiError
 from order_time import order_is_old_enough, parse_order_datetime
 from sku_parser import filter_new_gift_skus, parse_gift_skus
 
@@ -143,12 +144,13 @@ def try_approve_order(
 def load_config(path: Path) -> dict[str, Any]:
     if not path.is_file():
         raise FileNotFoundError(
-            f"配置文件不存在: {path}\n请复制 config.example.json 为 config.json 并填写 Cookie"
+            f"配置文件不存在: {path}\n请复制 config.example.json 为 config.json 并填写 guanyi 账号"
         )
     with path.open(encoding="utf-8") as f:
         cfg = json.load(f)
-    if not cfg.get("cookie") or "<" in str(cfg.get("cookie", "")):
-        raise ValueError("请在 config.json 中配置有效的 cookie")
+    guanyi = cfg.get("guanyi") or {}
+    if not guanyi.get("username") or not guanyi.get("password"):
+        raise ValueError("请在 config.json 的 guanyi 中配置 username 与 password")
     return cfg
 
 
@@ -363,11 +365,8 @@ def save_run_log(run: RunSummary, *, dry_run: bool) -> Path:
 
 
 def run(cfg: dict[str, Any], *, dry_run: bool, order_id: str | None) -> RunSummary:
-    client = GuanyiClient(
-        cfg["cookie"],
-        request_delay_sec=float(cfg.get("request_delay_sec", 0.4)),
-        stop_on_auth_error=bool(cfg.get("stop_on_auth_error", True)),
-    )
+    logger.info("正在登录管易…")
+    client = create_client_from_config(cfg)
 
     run_summary = RunSummary()
     shop_ids = str(cfg["shop_ids"])

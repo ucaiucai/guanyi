@@ -17,9 +17,27 @@ cp config.example.json config.json
 
 编辑 `config.json`：
 
+### 管易登录 (`guanyi`)
+
 | 字段 | 说明 |
 |------|------|
-| `cookie` | 浏览器登录管易后，从 DevTools → Network 任意请求复制完整 `Cookie` |
+| `guanyi.username` | 管易登录手机号或邮箱 |
+| `guanyi.password` | 登录密码（脚本自动 RSA 加密后登录） |
+| `guanyi.login_appkey` | 默认 `21226717` |
+| `guanyi.device_id` / `guanyi.ati` | 跳过二次验证；也可写入 `device_config.json` |
+
+启动时调用 `guanyi_auth` 模拟登录，API 请求 Cookie **仅含** `loginAppkey`、`userId`、`shiroCookie`（`shiroCookie` = 返回的 `sessionId`）。
+
+测试登录：
+
+```bash
+python guanyi_auth.py
+# 或
+python test.py
+```
+
+| 字段 | 说明 |
+|------|------|
 | `shop_ids` | 店铺 ID，与待审核列表筛选一致 |
 | `warehouse_id` | 查商品库存用的仓库 ID |
 | `page_size` | 列表每页条数，默认 50 |
@@ -49,7 +67,7 @@ cp config.example.json config.json
 
 依赖本机已配置 `lark-cli` 且能 `--as user` 访问该 Base。`--no-feishu` 可跳过同步。
 
-Cookie 过期时接口会报错，需重新登录管易并更新 `cookie`（关注 `shiroCookie`）。
+会话失效时重新运行即可（每次启动会自动登录）；若提示二次验证，请更新 `device_id` 与 `ati`。
 
 ## 运行
 
@@ -114,9 +132,11 @@ python add_gift_sku.py -v
 | 文件 | 作用 |
 |------|------|
 | `add_gift_sku.py` | 主入口 |
+| `guanyi_auth.py` | 管易模拟登录、组装 Cookie |
 | `guanyi_client.py` | 管易 HTTP 接口 |
 | `sku_parser.py` | 备注 SKU 解析 |
 | `config.example.json` | 配置模板 |
+| [docs/API_FLOW.md](docs/API_FLOW.md) | **接口入参/出参与字段关联完整说明** |
 
 ## 常见问题
 

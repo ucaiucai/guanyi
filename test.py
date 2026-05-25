@@ -1,31 +1,32 @@
-import requests
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""测试管易登录网关。"""
 
-cookies = {
-    'loginAppkey': '21226717',
-    'userId': '976938821241',
-    'shiroCookie': '619985c4-58a3-4aa5-bb25-8b161a75c54a',
-   }
+import json
+from pathlib import Path
 
-headers = {
-    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-    "Cookie": "loginAppkey=21226717;userId=976938821241;shiroCookie=bc76aab7-f7df-4db0-94ef-e1642a7c39ed"
-}
+from guanyi_auth import build_cookie_string, guanyi_login, resolve_cookie_from_config
 
-data = {
-    'page': '1',
-    'limit': '50',
-    'start': '0',
-    'shopIds': '354109126320',
-    'cod': '',
-    'chkMemo': 'false',
-    'hasInvoice': '',
-    'refund': '',
-    'financeReject': '',
-}
+CONFIG_PATH = Path(__file__).parent / "config.json"
 
-response = requests.post(
-    'https://v2.guanyierp.com/tc/trade/trade_order_approve/data/list',
-    headers=headers,
-    data=data,
-)
-print(response.json())
+
+def main() -> None:
+    if CONFIG_PATH.is_file():
+        cookie = resolve_cookie_from_config(json.loads(CONFIG_PATH.read_text(encoding="utf-8")))
+        print("Cookie:", cookie)
+        return
+
+    # 无 config 时手动传参（仅本地调试）
+    session = guanyi_login("username", "password")
+    print(session)
+    print(
+        build_cookie_string(
+            login_appkey="21226717",
+            user_id=str(session["userId"]),
+            session_id=str(session["sessionId"]),
+        )
+    )
+
+
+if __name__ == "__main__":
+    main()
