@@ -228,6 +228,14 @@ def notify_run_result(
         if table_url:
             text += f"\n\n[所有明细见飞书表格]({table_url})"
     else:
+        detail_lines = _build_detail_lines(
+            getattr(summary, "order_results", []),
+            dry_run=dry_run,
+        )
+        if not detail_lines and not error_msg:
+            logger.info("无处理明细，跳过钉钉通知")
+            return False
+
         title, text = build_summary_markdown(
             summary,
             dry_run=dry_run,

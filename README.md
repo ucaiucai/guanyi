@@ -85,7 +85,7 @@ python test.py
 | `secret` | 加签密钥（以 `SEC` 开头） |
 | `notify_on_dry_run` | 试运行是否通知，默认 `false` |
 
-执行结束后推送 Markdown 汇总（含飞书表格链接，取自 `feishu` 配置）；`--no-dingtalk` 可关闭。
+执行结束后推送 Markdown 汇总（含飞书表格链接，取自 `feishu` 配置）；**无处理明细时不发送**（仅有扫描/跳过统计、无实际加赠订单时静默）；`--no-dingtalk` 可关闭。异常中止仍会通知。
 
 会话失效时重新运行即可（每次启动会自动登录）；若提示二次验证，请更新 `device_id` 与 `ati`。
 
