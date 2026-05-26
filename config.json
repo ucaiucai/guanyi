@@ -1,0 +1,47 @@
+{
+  "guanyi": {
+    "username": "17303419993",
+    "password": "Dd@112211",
+    "login_appkey": "21226717",
+    "device_id": "EIMY7LHVHZMJDMPR3AD5KVWGPYZEVLPHZJZ5TAEU6EAPG3FZPCZAW4PKUVPYQ72ADHCIPSMWW42AYLYHTCGFYW4PLE",
+    "ati": "1570860693343"
+  },
+  "shop_ids": "354109126320",
+  "warehouse_id": "639951377088",
+  "page_size": 50,
+  "max_pages": null,
+  "request_delay_sec": 0.4,
+  "min_order_age_minutes": 30,
+  "log_query_rows": 50,
+  "sku_min_length": 2,
+  "gift_max_qty": 99,
+  "sku_allowlist_prefix": [],
+  "auto_approve": true,
+  "approve_when_ready": true,
+  "stop_on_auth_error": true,
+  "dry_run": false,
+  "dingtalk": {
+    "enabled": true,
+    "webhook_url": "https://oapi.dingtalk.com/robot/send?access_token=2ae8de40c6aaf6116b223a5d97ffaaa48432e60f1bf8ec52edd3e43fc49cc9bb",
+    "secret": "SECbf67348b27d7138028337ee0b68a15f6b0cec47d5fe513f1cb3f0106dcebd2d2",
+    "notify_on_dry_run": false
+  },
+  "feishu": {
+    "enabled": true,
+    "as": "bot",
+    "base_token": "FCAjbZmc2a31DSspNfccp3gWnVg",
+    "table_id": "tblhIMTiGuxeF52t",
+    "view_id": "vewjs9j8KZ",
+    "wiki_url": "https://doubleline.feishu.cn/wiki/TosvwRZ7lifUu9kIuKgcjuNqnTw",
+    "table_url": "https://doubleline.feishu.cn/wiki/TosvwRZ7lifUu9kIuKgcjuNqnTw?table=tblhIMTiGuxeF52t&view=vewjs9j8KZ",
+    "sync_on_dry_run": false,
+    "batch_size": 200
+  },
+  "list_filters": {
+    "cod": "",
+    "chkMemo": "",
+    "hasInvoice": "",
+    "refund": "",
+    "financeReject": ""
+  }
+}
