@@ -6,6 +6,7 @@ __pycache__/
 venv/
 logs/
 *.log
+.run_add_gift_sku.lock
 .agents/
 
 # Python tooling caches

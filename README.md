@@ -117,6 +117,34 @@ python add_gift_sku.py -v
 
 执行结束后会在 `logs/` 目录生成 `run_log_YYYYMMDD_HHMMSS.json`，记录本批处理明细。
 
+### OpenClaw / 云主机定时执行
+
+服务器部署路径示例：`/home/gem/workspace/agent/workspace/guanyi`
+
+1. 克隆项目并配置 `config.json`、`device_config.json`（如需）
+2. 配置 `lark-cli`（建议 `feishu.as: "bot"`）并给多维表机器人可编辑权限
+3. 赋予脚本可执行：`chmod +x scripts/run_add_gift_sku.sh`
+
+首次运行脚本时若没有 `.venv`，会自动执行 `python3 -m venv .venv` 并 `pip install -r requirements.txt`（也可手动预先创建）。
+
+**OpenClaw 定时任务命令**（不要再用裸 `python add_gift_sku.py`，请用脚本）：
+
+```bash
+/home/gem/workspace/agent/workspace/guanyi/scripts/run_add_gift_sku.sh
+```
+
+脚本会：进入项目目录、若无 `.venv` 则自动创建并安装依赖、使用 `.venv/bin/python` 执行、防并发锁、将输出追加到 `logs/cron.log`。
+
+环境变量（可选）：
+
+| 变量 | 说明 |
+|------|------|
+| `GUANYI_PROJECT_DIR` | 项目根目录，默认见上 |
+| `GUANYI_LOG_FILE` | 日志路径，默认 `logs/cron.log` |
+| `GUANYI_LOCK_FILE` | 锁文件，默认 `.run_add_gift_sku.lock` |
+
+建议调度间隔：**每 15～30 分钟**（与 `min_order_age_minutes` 配合）。
+
 ## SKU 解析规则
 
 - 匹配备注中由 **字母、数字、`-`** 组成的连续片段
@@ -155,6 +183,7 @@ python add_gift_sku.py -v
 | 文件 | 作用 |
 |------|------|
 | `add_gift_sku.py` | 主入口 |
+| `scripts/run_add_gift_sku.sh` | OpenClaw/cron 定时执行封装 |
 | `guanyi_auth.py` | 管易模拟登录、组装 Cookie |
 | `dingtalk_notify.py` | 钉钉机器人加签通知 |
 | `guanyi_client.py` | 管易 HTTP 接口 |
