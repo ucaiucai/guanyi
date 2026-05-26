@@ -11,6 +11,8 @@ from typing import Iterable, Sequence
 SKU_PATTERN = re.compile(r"[A-Za-z0-9-]+")
 _HAS_LETTER = re.compile(r"[A-Za-z]")
 _HAS_DIGIT = re.compile(r"[0-9]")
+# 纯数字 SKU 最短位数（如 20230614039）
+_MIN_PURE_DIGIT_SKU_LEN = 3
 
 # 数量 + 单位：两组、2个、×3
 _QTY_UNITS = "组个件支套瓶盒袋只份台把条根块片粒颗包"
@@ -74,7 +76,8 @@ def _is_valid_sku_token(token: str, *, min_length: int) -> bool:
     """
     有效 SKU 片段：
     - 含 '-'（如 AFL-0011、YHG-ZP-001），或
-    - 无 '-' 但同时含字母与数字（如 2406NCZ、WT26004）
+    - 无 '-' 但同时含字母与数字（如 2406NCZ、WD25002），或
+    - 连续纯数字且位数 ≥ max(3, min_length)（如 20230614039）
     - 排除容量规格（如 66ml、133ml）
     """
     if len(token) < min_length:
@@ -83,7 +86,10 @@ def _is_valid_sku_token(token: str, *, min_length: int) -> bool:
         return False
     if "-" in token:
         return True
-    return bool(_HAS_LETTER.search(token) and _HAS_DIGIT.search(token))
+    if _HAS_LETTER.search(token) and _HAS_DIGIT.search(token):
+        return True
+    min_pure = max(_MIN_PURE_DIGIT_SKU_LEN, min_length)
+    return token.isdigit() and len(token) >= min_pure
 
 
 def parse_skus(
@@ -224,3 +230,5 @@ def filter_new_gift_skus(
     """返回操作日志中尚未出现的新增记录对应的 GiftSku。"""
     existing = {c.upper() for c in existing_codes if c}
     return [g for g in gifts if g.code.upper() not in existing]
+
+
