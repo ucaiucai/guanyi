@@ -21,6 +21,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from dingtalk_notify import notify_run_result
 from feishu_bitable import sync_to_feishu_bitable
 from guanyi_auth import create_client_from_config
 from guanyi_client import GuanyiApiError
@@ -479,6 +480,11 @@ def main() -> int:
         help="不同步结果到飞书多维表",
     )
     parser.add_argument(
+        "--no-dingtalk",
+        action="store_true",
+        help="不发送钉钉通知",
+    )
+    parser.add_argument(
         "-v",
         "--verbose",
         action="store_true",
@@ -505,11 +511,26 @@ def main() -> int:
             **cfg,
             "feishu": {**(cfg.get("feishu") or {}), "enabled": False},
         }
+    if args.no_dingtalk:
+        cfg = {
+            **cfg,
+            "dingtalk": {**(cfg.get("dingtalk") or {}), "enabled": False},
+        }
+
+    summary = None
+    log_path: Path | None = None
+    exit_code = 0
 
     try:
         summary = run(cfg, dry_run=dry_run, order_id=args.order_id)
     except GuanyiApiError as exc:
         logger.error("运行中止: %s", exc)
+        notify_run_result(
+            None,
+            cfg.get("dingtalk") or {},
+            dry_run=dry_run,
+            error_msg=str(exc),
+        )
         return 1
 
     print_summary(summary, dry_run=dry_run)
@@ -531,9 +552,19 @@ def main() -> int:
             print(f"飞书多维表已同步 {n} 条: {wiki}")
     except Exception as exc:
         logger.error("飞书同步失败: %s", exc)
-        return 1
+        exit_code = 1
 
-    return 1 if summary.failed > 0 else 0
+    if notify_run_result(
+        summary,
+        cfg.get("dingtalk") or {},
+        dry_run=dry_run,
+        log_path=log_path,
+    ):
+        print("钉钉通知已发送")
+
+    if summary.failed > 0 and exit_code == 0:
+        exit_code = 1
+    return exit_code
 
 
 if __name__ == "__main__":

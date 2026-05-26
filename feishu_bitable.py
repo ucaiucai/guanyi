@@ -26,6 +26,16 @@ FIELD_ORDER = [
     "审核时间",
 ]
 
+# lark-cli 调用身份：写入需协作者「可编辑」权限（链接只读不够）
+VALID_AS = frozenset({"user", "bot"})
+DEFAULT_AS = "user"
+
+_PERM_HINT = (
+    "表已改为「链接只读、仅协作者可写」。请把执行 lark-cli 的身份（config.feishu.as）"
+    "加为该多维表格协作者且权限为「可编辑」：user=本机 auth login 的用户；"
+    "bot=飞书应用机器人（需用 open_id 添加协作者）。"
+)
+
 SKU_ACTION_STATUSES = frozenset(
     {
         "added",
@@ -143,6 +153,9 @@ def sync_to_feishu_bitable(
     base_token = feishu_cfg.get("base_token") or DEFAULT_BASE_TOKEN
     table_id = feishu_cfg.get("table_id") or DEFAULT_TABLE_ID
     batch_size = int(feishu_cfg.get("batch_size", 200))
+    as_identity = (feishu_cfg.get("as") or DEFAULT_AS).strip().lower()
+    if as_identity not in VALID_AS:
+        raise ValueError(f"feishu.as 须为 user 或 bot，当前: {as_identity!r}")
 
     written = 0
     for i in range(0, len(rows), batch_size):
@@ -152,6 +165,8 @@ def sync_to_feishu_bitable(
             "lark-cli",
             "base",
             "+record-batch-create",
+            "--as",
+            as_identity,
             "--base-token",
             base_token,
             "--table-id",
@@ -168,6 +183,11 @@ def sync_to_feishu_bitable(
         )
         if result.returncode != 0:
             err = result.stderr.strip() or result.stdout.strip()
+            if any(
+                x in err
+                for x in ("permission", "Permission", "230013", "1061002", "无权限", "forbidden")
+            ):
+                raise RuntimeError(f"飞书写入失败（权限）: {err}\n{_PERM_HINT}")
             raise RuntimeError(f"飞书写入失败: {err}")
 
         try:

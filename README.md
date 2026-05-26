@@ -65,7 +65,25 @@ python test.py
 | 审核状态 | 已通过 / 待审核 / 已拒绝 |
 | 审核时间 | 状态为「已通过」时写入当前时间 |
 
-依赖本机已配置 `lark-cli` 且能 `--as user` 访问该 Base。`--no-feishu` 可跳过同步。
+| 配置字段 | 说明 |
+|----------|------|
+| `as` | `lark-cli` 身份：`user`（默认）或 `bot` |
+| `base_token` / `table_id` | 多维表与数据表 ID |
+
+**权限（表改为「链接只读、仅协作者可写」后必做）**：程序写入走的是 `feishu.as` 对应身份，该身份必须是该 Base 的协作者且权限为**可编辑**（只读不够）。`user`：把本机 `lark-cli auth login` 的用户加为协作者；`bot`：把应用机器人 `open_id` 加为协作者（`lark-cli api GET /open-apis/bot/v3/info --as bot` 可查）。Cron/无人值守建议 `as: "bot"`。
+
+依赖本机已配置 `lark-cli`。`--no-feishu` 可跳过同步。
+
+### 钉钉通知 (`dingtalk`)
+
+| 字段 | 说明 |
+|------|------|
+| `enabled` | 是否发送，默认 `true` |
+| `webhook_url` | 机器人 Webhook 完整 URL |
+| `secret` | 加签密钥（以 `SEC` 开头） |
+| `notify_on_dry_run` | 试运行是否通知，默认 `false` |
+
+执行结束后推送 Markdown 汇总；`--no-dingtalk` 可关闭。
 
 会话失效时重新运行即可（每次启动会自动登录）；若提示二次验证，请更新 `device_id` 与 `ati`。
 
@@ -83,6 +101,9 @@ python add_gift_sku.py --no-approve
 
 # 不同步飞书
 python add_gift_sku.py --no-feishu
+
+# 不发送钉钉
+python add_gift_sku.py --no-dingtalk
 
 # 仅处理一笔订单（联调推荐，参数为平台订单号 platformCode）
 python add_gift_sku.py --order-id 6952978354922788022 --dry-run
@@ -133,6 +154,7 @@ python add_gift_sku.py -v
 |------|------|
 | `add_gift_sku.py` | 主入口 |
 | `guanyi_auth.py` | 管易模拟登录、组装 Cookie |
+| `dingtalk_notify.py` | 钉钉机器人加签通知 |
 | `guanyi_client.py` | 管易 HTTP 接口 |
 | `sku_parser.py` | 备注 SKU 解析 |
 | `config.example.json` | 配置模板 |

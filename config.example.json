@@ -20,8 +20,15 @@
   "auto_approve": true,
   "approve_when_ready": true,
   "dry_run": false,
+  "dingtalk": {
+    "enabled": true,
+    "webhook_url": "https://oapi.dingtalk.com/robot/send?access_token=YOUR_TOKEN",
+    "secret": "SECyour_secret",
+    "notify_on_dry_run": false
+  },
   "feishu": {
     "enabled": true,
+    "as": "user",
     "base_token": "FCAjbZmc2a31DSspNfccp3gWnVg",
     "table_id": "tblhIMTiGuxeF52t",
     "wiki_url": "https://doubleline.feishu.cn/wiki/TosvwRZ7lifUu9kIuKgcjuNqnTw",

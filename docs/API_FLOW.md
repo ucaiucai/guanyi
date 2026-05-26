@@ -428,10 +428,13 @@ flowchart TB
 
 ```bash
 lark-cli base +record-batch-create \
+  --as <config.feishu.as> \
   --base-token <config.feishu.base_token> \
   --table-id <config.feishu.table_id> \
   --json '{"fields":[...],"rows":[[...]]}'
 ```
+
+`config.feishu.as` 为 `user` 或 `bot`。表若设为「链接只读、仅协作者可写」，该身份须已是 Base 协作者且权限为**可编辑**。
 
 **一行对应一个 SKU 处理结果**（非一单一行）。
 
