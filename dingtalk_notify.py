@@ -128,13 +128,8 @@ def build_summary_markdown(
         f"### 管易自动加赠品 · {mode}",
         "",
         f"- 扫描订单: {summary.orders_scanned}",
-        f"- 含可解析 SKU: {summary.orders_with_skus}",
-        f"- 加赠成功: {summary.added}",
-        f"- 已存在跳过: {summary.skipped_exists}",
-        f"- 无 SKU 跳过: {summary.skipped_no_sku}",
         f"- 提交审核: {summary.approved}",
         f"- 半小时内跳过: {summary.skipped_too_recent}",
-        f"- 失败/未找到: {summary.failed}",
     ]
 
     detail_lines = _build_detail_lines(
