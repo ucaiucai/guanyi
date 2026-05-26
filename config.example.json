@@ -31,7 +31,9 @@
     "as": "user",
     "base_token": "FCAjbZmc2a31DSspNfccp3gWnVg",
     "table_id": "tblhIMTiGuxeF52t",
+    "view_id": "vewjs9j8KZ",
     "wiki_url": "https://doubleline.feishu.cn/wiki/TosvwRZ7lifUu9kIuKgcjuNqnTw",
+    "table_url": "",
     "sync_on_dry_run": false,
     "batch_size": 200
   },

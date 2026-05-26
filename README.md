@@ -69,6 +69,8 @@ python test.py
 |----------|------|
 | `as` | `lark-cli` 身份：`user`（默认）或 `bot` |
 | `base_token` / `table_id` | 多维表与数据表 ID |
+| `view_id` | Wiki 打开链接中的视图 ID（钉钉通知链接用） |
+| `table_url` | 非空时直接使用该链接，不再拼接 `wiki_url` |
 
 **权限（表改为「链接只读、仅协作者可写」后必做）**：程序写入走的是 `feishu.as` 对应身份，该身份必须是该 Base 的协作者且权限为**可编辑**（只读不够）。`user`：把本机 `lark-cli auth login` 的用户加为协作者；`bot`：把应用机器人 `open_id` 加为协作者（`lark-cli api GET /open-apis/bot/v3/info --as bot` 可查）。Cron/无人值守建议 `as: "bot"`。
 
@@ -83,7 +85,7 @@ python test.py
 | `secret` | 加签密钥（以 `SEC` 开头） |
 | `notify_on_dry_run` | 试运行是否通知，默认 `false` |
 
-执行结束后推送 Markdown 汇总；`--no-dingtalk` 可关闭。
+执行结束后推送 Markdown 汇总（含飞书表格链接，取自 `feishu` 配置）；`--no-dingtalk` 可关闭。
 
 会话失效时重新运行即可（每次启动会自动登录）；若提示二次验证，请更新 `device_id` 与 `ati`。
 

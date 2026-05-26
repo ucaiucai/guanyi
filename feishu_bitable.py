@@ -13,8 +13,34 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 # 默认：wiki 订单记录表 https://doubleline.feishu.cn/wiki/TosvwRZ7lifUu9kIuKgcjuNqnTw
+DEFAULT_WIKI_URL = "https://doubleline.feishu.cn/wiki/TosvwRZ7lifUu9kIuKgcjuNqnTw"
 DEFAULT_BASE_TOKEN = "FCAjbZmc2a31DSspNfccp3gWnVg"
 DEFAULT_TABLE_ID = "tblhIMTiGuxeF52t"
+DEFAULT_VIEW_ID = "vewjs9j8KZ"
+
+
+def build_feishu_table_url(feishu_cfg: dict[str, Any]) -> str | None:
+    """
+    生成飞书多维表在 Wiki 中的打开链接。
+    优先 table_url；否则由 wiki_url + table_id + view_id 拼接。
+    """
+    explicit = (feishu_cfg.get("table_url") or "").strip()
+    if explicit:
+        return explicit
+
+    wiki = (feishu_cfg.get("wiki_url") or DEFAULT_WIKI_URL).strip()
+    table_id = (feishu_cfg.get("table_id") or DEFAULT_TABLE_ID).strip()
+    if not wiki:
+        return None
+    if not table_id:
+        return wiki
+
+    sep = "&" if "?" in wiki else "?"
+    url = f"{wiki}{sep}table={table_id}"
+    view_id = (feishu_cfg.get("view_id") or DEFAULT_VIEW_ID).strip()
+    if view_id:
+        url = f"{url}&view={view_id}"
+    return url
 
 FIELD_ORDER = [
     "订单号",

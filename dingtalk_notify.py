@@ -15,7 +15,7 @@ from typing import Any
 
 import requests
 
-from feishu_bitable import SKU_ACTION_STATUSES, _audit_status
+from feishu_bitable import SKU_ACTION_STATUSES, _audit_status, build_feishu_table_url
 
 logger = logging.getLogger(__name__)
 
@@ -118,6 +118,7 @@ def build_summary_markdown(
     dry_run: bool,
     log_path: Path | None = None,
     error_msg: str | None = None,
+    feishu_cfg: dict[str, Any] | None = None,
 ) -> tuple[str, str]:
     """返回 (title, markdown_text)。"""
     mode = "试运行" if dry_run else "正式执行"
@@ -167,6 +168,10 @@ def build_summary_markdown(
         if len(fail_lines) > 15:
             lines.append(f"- …共 {len(fail_lines)} 条")
 
+    table_url = build_feishu_table_url(feishu_cfg or {})
+    if table_url:
+        lines.extend(["", f"[所有明细见飞书表格]({table_url})"])
+
     return title, "\n".join(lines)
 
 
@@ -195,6 +200,7 @@ def notify_run_result(
     dry_run: bool,
     log_path: Path | None = None,
     error_msg: str | None = None,
+    feishu_cfg: dict[str, Any] | None = None,
 ) -> bool:
     """
     发送钉钉通知。返回是否发送成功。
@@ -213,15 +219,21 @@ def notify_run_result(
         logger.warning("未配置 dingtalk.webhook_url 或 dingtalk.secret，跳过通知")
         return False
 
+    feishu = feishu_cfg or {}
+    table_url = build_feishu_table_url(feishu)
+
     if summary is None:
         title = "管易自动加赠品 · 异常中止"
         text = f"### 管易自动加赠品\n\n**异常**: {error_msg or '未知错误'}"
+        if table_url:
+            text += f"\n\n[所有明细见飞书表格]({table_url})"
     else:
         title, text = build_summary_markdown(
             summary,
             dry_run=dry_run,
             log_path=log_path,
             error_msg=error_msg,
+            feishu_cfg=feishu,
         )
 
     try:

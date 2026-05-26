@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any
 
 from dingtalk_notify import notify_run_result
-from feishu_bitable import sync_to_feishu_bitable
+from feishu_bitable import build_feishu_table_url, sync_to_feishu_bitable
 from guanyi_auth import create_client_from_config
 from guanyi_client import GuanyiApiError
 from order_time import order_is_old_enough, parse_order_datetime
@@ -530,6 +530,7 @@ def main() -> int:
             cfg.get("dingtalk") or {},
             dry_run=dry_run,
             error_msg=str(exc),
+            feishu_cfg=cfg.get("feishu") or {},
         )
         return 1
 
@@ -545,11 +546,8 @@ def main() -> int:
             dry_run=dry_run,
         )
         if n:
-            wiki = feishu_cfg.get(
-                "wiki_url",
-                "https://doubleline.feishu.cn/wiki/TosvwRZ7lifUu9kIuKgcjuNqnTw",
-            )
-            print(f"飞书多维表已同步 {n} 条: {wiki}")
+            table_url = build_feishu_table_url(feishu_cfg) or feishu_cfg.get("wiki_url", "")
+            print(f"飞书多维表已同步 {n} 条: {table_url}")
     except Exception as exc:
         logger.error("飞书同步失败: %s", exc)
         exit_code = 1
@@ -559,6 +557,7 @@ def main() -> int:
         cfg.get("dingtalk") or {},
         dry_run=dry_run,
         log_path=log_path,
+        feishu_cfg=feishu_cfg,
     ):
         print("钉钉通知已发送")
 
