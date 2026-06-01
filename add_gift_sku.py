@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_CONFIG_PATH = Path(__file__).parent / "config.json"
 LOGS_DIR = Path(__file__).parent / "logs"
+DELAY_SKIP_KEYWORD = "延迟"
 
 
 @dataclass
@@ -394,6 +395,11 @@ def run(cfg: dict[str, Any], *, dry_run: bool, order_id: str | None) -> RunSumma
                 return
 
         memo = str(row.get("sellerMemo") or "")
+        if DELAY_SKIP_KEYWORD in memo:
+            label = row.get("platformCode") or row.get("id")
+            logger.info("订单 %s 备注含“%s”，跳过加赠与审核", label, DELAY_SKIP_KEYWORD)
+            return
+
         gift_skus = parse_gift_skus(
             memo,
             min_length=int(cfg.get("sku_min_length", 2)),
