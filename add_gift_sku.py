@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_CONFIG_PATH = Path(__file__).parent / "config.json"
 LOGS_DIR = Path(__file__).parent / "logs"
 # 备注含以下任一关键字则跳过（不加赠、不审核）
-SKIP_MEMO_KEYWORDS = ("延迟", "更换","正","反")
+SKIP_MEMO_KEYWORDS = ("延迟", "更换","正","反","一起发货")
 
 
 @dataclass
